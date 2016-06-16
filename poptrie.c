@@ -80,6 +80,22 @@ _route_del_propagate(struct radix_node *, struct radix_node *,
 static u32 _rib_lookup(struct radix_node *, u32, int, struct radix_node *);
 static void _release_radix(struct radix_node *);
 
+static int
+get_new_node(struct poptrie *poptrie)
+{
+    if (poptrie->last_base1 == (1 << poptrie->nodesz) - 1)
+        return -1;
+    return ++poptrie->last_base1;
+}
+
+static int
+get_new_leaf(struct poptrie *poptrie)
+{
+    if (poptrie->last_base0 == (1 << poptrie->leafsz) - 1)
+        return -1;
+    return ++poptrie->last_base0;
+}
+
 /*
  * Bit scan
  */
@@ -127,39 +143,29 @@ poptrie_init(struct poptrie *poptrie, int sz1, int sz0)
         poptrie_release(poptrie);
         return NULL;
     }
+    poptrie->nodesz = sz1;
     poptrie->leaves = malloc(sizeof(poptrie_leaf_t) * (1 << sz0));
     if ( NULL == poptrie->leaves ) {
         poptrie_release(poptrie);
         return NULL;
     }
+    poptrie->nodesz = sz0;
 
-    /* Prepare the buddy system for the internal node array */
-    poptrie->cnodes = malloc(sizeof(struct buddy));
+    /* Prepare the memory management system for the internal node array */
+    poptrie->cnodes = malloc(sizeof(*poptrie->cnodes) * (1 << sz1));
     if ( NULL == poptrie->cnodes ) {
         poptrie_release(poptrie);
         return NULL;
     }
-    ret = buddy_init(poptrie->cnodes, sz1, sz1, sizeof(u32));
-    if ( ret < 0 ) {
-        free(poptrie->cnodes);
-        poptrie->cnodes = NULL;
-        poptrie_release(poptrie);
-        return NULL;
-    }
+    poptrie->last_base1 = -1;
 
-    /* Prepare the buddy system for the leaf node array */
-    poptrie->cleaves = malloc(sizeof(struct buddy));
+    /* Prepare the memory management system for the leaf node array */
+    poptrie->cleaves = malloc(sizeof(*poptrie->cleaves) * (1 << sz0));
     if ( NULL == poptrie->cleaves ) {
         poptrie_release(poptrie);
         return NULL;
     }
-    ret = buddy_init(poptrie->cleaves, sz0, sz0, sizeof(u32));
-    if ( ret < 0 ) {
-        free(poptrie->cnodes);
-        poptrie->cnodes = NULL;
-        poptrie_release(poptrie);
-        return NULL;
-    }
+    poptrie->last_base0 = -1;
 
     /* Prepare the direct pointing array */
     poptrie->dir = malloc(sizeof(u32) << POPTRIE_S);
@@ -451,7 +457,7 @@ _update_part(struct poptrie *poptrie, struct radix_node *tnode, int inode,
         }
 
         /* Replace the root */
-        nroot = buddy_alloc2(poptrie->cnodes, 0);
+        nroot = get_new_node(poptrie);
         if ( nroot < 0 ) {
             return -1;
         }
@@ -1194,7 +1200,7 @@ _update_inode(struct poptrie *poptrie, struct radix_node *node, int inode,
     base0 = -1;
     if ( nlvec > 0 ) {
         p = nlvec;
-        base0 = buddy_alloc2(poptrie->cleaves, bsr(p - 1) + 1);
+        base0 = get_new_leaf(poptrie);
         if ( base0 < 0 ) {
             if ( base1 >= 0 ) {
                 buddy_free2(poptrie->cnodes, base1);

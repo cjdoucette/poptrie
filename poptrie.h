@@ -100,6 +100,10 @@ struct poptrie {
     int nodesz;
     int leafsz;
 
+    /* Last allocated indices. */
+    u32 last_base0;
+    u32 last_base1;
+
     /* Direct pointing */
     u32 *dir;
     u32 *altdir;

@@ -80,6 +80,7 @@ test_lookup(void)
     }
     TEST_PROGRESS();
 
+#if 0
     /* Route update */
     nexthop = (void *)5678;
     ret = poptrie_route_update(poptrie, 0x1c001200, 24, nexthop);
@@ -105,7 +106,7 @@ test_lookup(void)
 
     /* Release */
     poptrie_release(poptrie);
-
+#endif
     return 0;
 }
 
@@ -320,8 +321,8 @@ main(int argc, const char *const argv[])
     /* Run tests */
     TEST_FUNC("init", test_init, ret);
     TEST_FUNC("lookup", test_lookup, ret);
-    TEST_FUNC("lookup_fullroute", test_lookup_linx, ret);
-    TEST_FUNC("lookup_fullroute_update", test_lookup_linx_update, ret);
+    //TEST_FUNC("lookup_fullroute", test_lookup_linx, ret);
+    //TEST_FUNC("lookup_fullroute_update", test_lookup_linx_update, ret);
 
     return ret;
 }
